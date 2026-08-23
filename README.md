@@ -2,17 +2,17 @@
 
 > **Fuse 2–5 frontier models instead of racing them. AND, not OR.**
 
-📺 V2 walkthrough: **[Understand how to use the Pi Coding Agent to COMBINE COMPUTE not SELECT COMPUTE The Intelligence Explosion (Fusion Harness V2)](https://youtu.be/rqZHR-hRllI)**
+📺 V2 walkthrough: **[Understand how to use the Pi Coding Agent to COMBINE COMPUTE not SELECT COMPUTE](https://youtu.be/rqZHR-hRllI)**
 
 <p align="center">
   <img src="images/hero2.png" alt="FUSION HARNESS V2 — combine your compute" width="850">
 </p>
 
+📺 V1 walkthrough: [GPT-5.6 Sol vs Fable 5 Is the Wrong Question (Fusion)](https://youtu.be/AQl5Q-0l7FQ)
+
 <p align="center">
   <img src="images/hero.png" alt="MODEL FUSION — multiple model streams fusing into one over an engineer's keyboard" width="850">
 </p>
-
-📺 V1 walkthrough: [GPT-5.6 Sol vs Fable 5 Is the Wrong Question (Fusion)](https://youtu.be/AQl5Q-0l7FQ)
 
 **Fuse 2–5 frontier models instead of racing them. AND, not OR.**
 
@@ -275,7 +275,7 @@ Every run writes an inspectable `/tmp/fusion-harness-*` directory with `stack.js
 npm run test:fusion-harness     # deterministic unit/contract tests
 ```
 
-Live validation prompts are checked in under `prompts/duckdb/`, ordered simple to complex and centered on the DuckDB v2.0 preview.
+Live validation prompts are checked in under `prompts/duckdb/`, ordered simple to complex and centered on the [DuckDB v2.0 preview](https://duckdb.org/2026/08/17/duckdb-20-highlights).
 
 ---
 
