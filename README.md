@@ -60,16 +60,22 @@ Model rankings flip every month. Betting a workflow on ONE frontier model means 
 
 ## Launch
 
-Legacy two-slot mode remains compatible:
+The fusion stack (Fable 5 architect + Gemini 3.7 Flash Main + DeepSeek V4 Pro):
 
 ```bash
-just fh
+just fusion
 ```
 
 Explicit model stack:
 
 ```bash
 just fh-stack .pi/fusion-harness/model-stack-trio.yaml
+```
+
+Legacy two-slot mode remains compatible:
+
+```bash
+just fh-workhorse   # cheap pair · just fh-sota for the frontier pair
 ```
 
 The extension selects the configured primary builder as Pi's live host model. Invalid/unavailable stacks fail startup.
