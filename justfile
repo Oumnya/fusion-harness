@@ -1,44 +1,16 @@
 set dotenv-load := true
 
-# ── fusion-harness ──────────────────────────────────────
-# /fusion · /auto-validate · /opinion — fuse two frontier models (AND, not OR).
-# The HOST runs on the BUILDER model: raw (non-slash) input IS the builder agent.
-#
-# Two launch recipes, two tiers — everything else is a flag:
-#
-#   just fh-workhorse    cheap pair (sonnet-5 plans · terra builds + hosts) — use for testing
-#   just fh-sota         frontier pair (fable-5 plans · sol builds + hosts) — the on-camera run
-#
-# Configuration flags (all optional, appendable to either recipe):
-#   --architect <provider/id>              plans/fuses/validates
-#   --builder <provider/id>                builds
-#   --architect-thinking <level>           EVERY architect-family execution
-#   --builder-thinking <level>             EVERY builder execution
-#                                          (levels: off|minimal|low|medium|high|xhigh|max)
-#   --architect-system-prompt <text|path>  override architect worker/fusion system prompt
-#   --builder-system-prompt <text|path>    override builder system prompt
-#   --max-validations <n>                  /auto-validate halt cap            default 5
-#   --escalate-to-validator-count <n>      validator triage from Nth failure  default 3
-#   --child-timeout <seconds>              kill any child agent after N sec   default 28800 = 8h (max 86400)
-#
-# e.g. just fh-workhorse --architect-thinking high --builder-system-prompt ./persona.md
-#      just fh-sota --architect-thinking max --builder-thinking max
-#
-# Default prompts live in extensions/fusion-harness/{SYSTEM,USER}_PROMPT_*.md — edit to tune.
-# Sessions persist per project (/tmp/fusion-harness-sessions) — /fh-reset for fresh memories.
-
-# WORKHORSE tier — the cheap pair (sonnet-5 plans · terra builds + hosts). Use for testing.
-WORKHORSE_ARCHITECT := "anthropic/claude-sonnet-5"
-WORKHORSE_BUILDER := "openai/gpt-5.6-terra"
-
-# STATE-OF-THE-ART tier — the frontier, on-camera pair (fable 5 plans · sol builds + hosts).
-SOTA_ARCHITECT := "anthropic/claude-fable-5"
-SOTA_BUILDER := "openai/gpt-5.6-sol"
-
+# Bare `just` lists every recipe (first recipe = default — keep this one on top).
 default:
     @just --list
 
-# WORKHORSE tier — cheap pair at medium thinking. Use this for testing.
+# fusion-harness — 2-5 configured agents, AND not OR.
+WORKHORSE_ARCHITECT := "anthropic/claude-sonnet-5"
+WORKHORSE_BUILDER := "openai/gpt-5.6-terra"
+SOTA_ARCHITECT := "anthropic/claude-fable-5"
+SOTA_BUILDER := "openai/gpt-5.6-sol"
+
+# Cheap legacy two-slot pair. Raw chat is the builder.
 fh-workhorse *ARGS:
     pi -e extensions/fusion-harness/fusion-harness.ts \
         --model {{WORKHORSE_BUILDER}} \
@@ -46,10 +18,23 @@ fh-workhorse *ARGS:
         --architect-thinking medium --builder-thinking medium \
         {{ARGS}}
 
-# STATE-OF-THE-ART tier — frontier pair at xhigh thinking. The on-camera run.
+# Frontier legacy two-slot pair.
 fh-sota *ARGS:
     pi -e extensions/fusion-harness/fusion-harness.ts \
         --model {{SOTA_BUILDER}} \
         --architect {{SOTA_ARCHITECT}} --builder {{SOTA_BUILDER}} \
-        --architect-thinking xhigh --builder-thinking xhigh \
+        --architect-thinking medium --builder-thinking medium \
         {{ARGS}}
+
+# Explicit 2-5 slot YAML stack. The extension selects configured Main as host.
+fh-stack CONFIG *ARGS:
+    pi -e extensions/fusion-harness/fusion-harness.ts \
+        --fh-config {{CONFIG}} {{ARGS}}
+
+# THE fusion stack: rune=Fable 5 architect · flux=Gemini 3.7 Flash Main · drift=DeepSeek V4 Pro
+fusion *ARGS:
+    just fh-stack .pi/fusion-harness/model-stack-fusion.yaml {{ARGS}}
+
+# 5-slot fusion stack: fusion trio + fire=Kimi K3 + hawk=DeepSeek V4 Flash (both Fireworks)
+fusion5 *ARGS:
+    just fh-stack .pi/fusion-harness/model-stack-fusion-5.yaml {{ARGS}}

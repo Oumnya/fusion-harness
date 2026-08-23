@@ -1,19 +1,22 @@
 # fusion-harness
 
-> **Fuse frontier models instead of racing them. AND, not OR.**
-> A standalone [Pi coding agent](https://github.com/badlogic/pi-mono) extension harness for two-model agentic engineering.
+> **Fuse 2–5 frontier models instead of racing them. AND, not OR.**
 
-📺 Watch this video to get the full breakdown of this codebase: **[GPT-5.6 Sol vs Fable 5 Is the Wrong Question (Fusion) on YouTube](https://youtu.be/AQl5Q-0l7FQ)**
+📺 V2 walkthrough: **[Understand how to use the Pi Coding Agent to COMBINE COMPUTE not SELECT COMPUTE The Intelligence Explosion (Fusion Harness V2)](https://youtu.be/rqZHR-hRllI)**
 
 <p align="center">
-  <img src="images/hero.png" alt="MODEL FUSION — two model energy streams fusing into one over an engineer's keyboard" width="850">
+  <img src="images/hero2.png" alt="FUSION HARNESS V2 — combine your compute" width="850">
 </p>
 
 <p align="center">
-  <img src="images/svg-01-fusion-hero-animated.svg" alt="ARCHITECT (claude-fable-5) and BUILDER (gpt-5.6-sol) streams fusing into one result — AND, not OR" width="850">
+  <img src="images/hero.png" alt="MODEL FUSION — multiple model streams fusing into one over an engineer's keyboard" width="850">
 </p>
 
-"Which model is best" is a benchmark question, not an engineering question. One model plans, another builds, and the results fuse: you combine compute instead of selecting it. Aider called the pattern [architect/editor](https://aider.chat/2024/09/26/architect.html) (the original fusion); [Devin calls it fusion](https://cognition.com/blog/devin-fusion); [OpenRouter calls it model fusion](https://openrouter.ai/blog/announcements/fusion-beats-frontier/). This repo makes the pattern a first-class, on-camera-clear workflow: two hard-labeled agents, a gate-first validation loop, and attributed fusion. **You don't have to pick a winner when you can hire both.**
+📺 V1 walkthrough: [GPT-5.6 Sol vs Fable 5 Is the Wrong Question (Fusion)](https://youtu.be/AQl5Q-0l7FQ)
+
+**Fuse 2–5 frontier models instead of racing them. AND, not OR.**
+
+A composable Pi extension with one configured ARCHITECT, one primary/Main BUILDER (the raw-chat host), and up to three secondary builders. It provides N-way opinions, fusion, debate, coordinated implementation, direct one-agent routing, model selection, and gate-first validation without taking over Pi's footer.
 
 ---
 
@@ -22,293 +25,257 @@
 ### Agentic Install
 
 ```bash
-claude "/install"   # runs the /install slash command in Claude Code (or Pi, or your favorite agentic coding tool)
+# in Claude Code, Pi, or your favorite agentic coding tool
+/install
 ```
 
-The `/install` command lives at `.claude/commands/install.md` and handles toolchain checks, key checks, and project-specific setup.
+The `/install` command lives at `.claude/commands/install.md` and handles toolchain checks, Node deps, `.env` verification, and a live launch check.
 
 ### Manual Install
 
-**Prereqs:** [`pi`](https://github.com/badlogic/pi-mono), [`just`](https://github.com/casey/just), [`jq`](https://jqlang.github.io/jq/), [`uv`](https://docs.astral.sh/uv/).
+**Prereqs:** [`pi`](https://pi.dev/), [`just`](https://github.com/casey/just), [`bun`](https://bun.sh), `jq`, [`uv`](https://github.com/astral-sh/uv).
 
 ```bash
-npm install -g @earendil-works/pi-coding-agent    # the Pi coding agent
-brew install just jq uv                           # task runner, json inspection, gate runner
-printf 'ANTHROPIC_API_KEY=sk-ant-...\nOPENAI_API_KEY=sk-...\n' >> .env   # architect + builder keys
-just fh-workhorse                                 # launch on the cheap test pair
+npm install -g @earendil-works/pi-coding-agent   # the pi coding agent
+brew install just jq uv                          # command runner + gate tooling
+npm install                                      # repo deps (yaml parser)
+cp .env.example .env                             # then fill ANTHROPIC/GEMINI/FIREWORKS/OPENAI/OPENROUTER_API_KEY
+npm test                                         # 34 deterministic tests, zero paid calls
 ```
 
----
-
-## Why this exists
-
-<p align="center">
-  <img src="images/video-frames/and-not-or.png" alt="Compute routed to Model A OR Model B (select) versus Compute routed to A + B (AND: combine compute)" width="780">
-</p>
-
-Every frontier release restarts the same argument: `GPT-5.6 Sol` or `Fable 5`? Benchmarks crown a winner, teams switch, and next quarter the crown moves. Meanwhile the two models are genuinely different animals: one plans and critiques with more depth, the other ships working diffs faster. Picking one means losing the other's edge on every single task.
-
-<p align="center">
-  <img src="images/video-frames/team-vs-lone-wolf.png" alt="Unchecked lone wolf drifting below the quality line versus an architect-builder team with validation checks" width="780">
-</p>
-
-The deeper problem is review, the second constraint of agentic engineering. A single unchecked agent drifts below the quality line and nobody catches it until you read the diff. A tight two-agent team validates its own work as it goes: the architect checks the builder, the gate checks them both.
-
-The harness inverts the question. The ARCHITECT model plans, fuses, and validates; the BUILDER model builds; a fusion step merges their independent answers with explicit attribution, and an acceptance gate proves the result. **The wrong question is "which model." The right question is "which role."**
-
-<table align="center">
-  <tr>
-    <td><img src="images/video-frames/fusion-core.png" alt="Fable 5 and GPT-5.6 Sol linked through a glowing fused-output core" width="390"></td>
-    <td><img src="images/video-frames/combined-context-window.png" alt="Fable 5 and GPT-5.6 Sol context windows stacked into one fused context" width="390"></td>
-  </tr>
-</table>
-
-Used properly, fusion combines the intelligence AND the context windows of your models: two independent thought chains, one merged result.
+Note: pi reads `GEMINI_API_KEY` for the google provider (not `GOOGLE_GENERATIVE_AI_API_KEY`).
 
 ---
 
-## The three commands
+## Why fusion
 
 <p align="center">
-  <img src="images/svg-03-three-commands.svg" alt="/opinion — side by side, /fusion — merged via a fusion agent, /auto-validate — validator gate + builder loop" width="780">
+  <img src="images/svg-12-fusion-fanout-merge-animated.svg" alt="One prompt fans out to every configured model; one sole-writer FUSION agent merges; every model ACKs the result" width="750">
 </p>
 
-One extension file registers three slash commands. Every agent is a spawned `pi --mode json -p` subprocess with a fully qualified `provider/id` model, per-role thinking level, and artifacts under `/tmp/fusion-harness-*` (never inside this repo).
 
-Children are deliberately **clean-room**: every spawn gets `--no-skills --no-extensions --no-context-files`. `--no-extensions` keeps a child from recursively loading this harness; `--no-skills` / `--no-context-files` keep spawns lean and deterministic — each worker's entire contract comes from the harness's prompt files, identical on any machine regardless of what skills are installed. Only the HOST (raw chat) loads your skills and context files; children never do, even the builder children that fork the host session (a fork copies conversation history, but each child rebuilds its own system prompt from its own flags).
+Model rankings flip every month. Betting a workflow on ONE frontier model means re-betting every month. This harness makes the bet unnecessary: run 2 to 5 models against the same problem, compare or fuse their answers, and keep one shared working directory safe with a single-writer invariant the whole time.
 
-| Command | Agents | What happens |
-|---|---|---|
-| `/opinion <prompt>` | 2 | Both models answer independently (every tool except write/edit). One panel compares them side by side — model, latency, tokens, cost — above both full answers. A pure A/B read. |
-| `/fusion "<prompt>" "<fusion-prompt>"` | 3 | ARCHITECT and BUILDER answer in parallel, both with full tools — either can build/render what you asked for. A third FUSION agent (architect model, fresh session, full tools) merges the two per your fusion instruction — default is a critical merge with `[ARCHITECT]`/`[BUILDER]` attribution and a **Consensus & Divergence** close. |
-| `/auto-validate <prompt>` | 2 + gate | The auto-validation loop: VALIDATOR designs an acceptance gate BEFORE any work happens, BUILDER builds, the gate runs, failures feed back verbatim until green or halt. Full breakdown below. |
+> *The most flexible system wins. AND, not OR.*
 
-### Same team, three outputs
+## Launch
 
-<p align="center">
-  <img src="images/video-frames/fusion-value-ladder-switchboard.png" alt="Value ladder: /opinion gives 2 answers, /fusion gives 1 merged plan, /auto-validate gives a verified build" width="780">
-</p>
+Legacy two-slot mode remains compatible:
 
-The three commands are a value ladder on the same two agents. `/opinion` is the scout: two takes, no merge, you choose. `/fusion` is the planning step: the architect merges both takes into one plan. `/auto-validate` is build and test in one: a gate proves the work. Chain them (opinion, then fusion, then auto-validate) and you are running a micro software-development lifecycle inside a single harness.
-
-### /opinion — two perspectives, side by side
-
-<p align="center">
-  <img src="images/video-frames/opinion-flow.png" alt="/opinion fanning out to Fable 5 and GPT-5.6 Sol answer panels in parallel — 2 agents total" width="780">
-</p>
-
-Both models take your prompt in parallel and the panel lines them up: latency, tokens in/out, cost, and the full answers. You get two unique perspectives no single-model tool gives you, and a free side effect: a running head-to-head of how your models actually perform on your work. **Relativity is the best benchmark.**
-
-### /fusion — merge with attribution
-
-<p align="center">
-  <img src="images/video-frames/fusion-command-flow.png" alt="/fusion flow: Fable 5 and GPT-5.6 Sol in parallel into a fresh-session Fusion Architect producing the fused answer — 3 agents total" width="780">
-</p>
-
-Both workers execute with full tools, then a third agent (the architect model on a fresh session) reads both raw answers from the run's artifacts dir and merges them per your fusion instruction.
-
-<p align="center">
-  <img src="images/video-frames/fusion-provenance-resolver.png" alt="Fable plan and GPT plan resolving into a fused plan with per-line provenance: MERGED, KEPT, KEPT, NEW — 0 dropped" width="780">
-</p>
-
-The fused result carries provenance: what both models agreed on (consensus), what only one saw (divergence, kept and attributed), and what got discarded. The divergences are the value: you hired two different engineers precisely so they would not say the same thing.
-
-`/fh-reset` wipes the persistent per-project role sessions when you want fresh agent memories. Pi's built-in `/new` does this automatically on top of its normal fresh-session flow — a new conversation means new role brains too (plain restarts, `/resume`, and forks keep them).
-
-**Press `escape` to stop any running command.** Pi's own escape only aborts *its* agent loop; every agent here is a spawned subprocess, so the harness taps the key itself and kills the whole run — children first, gate included. The panel says you stopped it rather than blaming the models.
-
-`/thinking <architect> [builder]` retunes thinking mid-session — no restart. Omit the builder level to leave it unchanged; run it bare to print the current pair. Canonical or short forms both work (`high` or `hi`, `medium` or `med`, `off` or `none`), so you can type back exactly what the footer shows.
-
-`/system-prompt` shows the system prompt each role runs with — ARCHITECT | BUILDER side by side, zero cost (nothing spawns). Each column is just the prompt text: the `--*-system-prompt` override (inline flag text, or the contents of the file it points to), or pi's actual default prompt when unset — rebuilt exactly as a spawned child gets it. No skills or project-context sections appear in either column because children are clean-room (see above); the host's own prompt, which does carry your skills, is not what this panel shows.
-
----
-
-## Raw chat IS the builder
-
-<p align="center">
-  <img src="images/svg-04-host-as-builder.svg" alt="Host session on the builder model forks builder children; the architect session stays a separate brain" width="750">
-</p>
-
-The launch recipes set the Pi host itself to the BUILDER model. Type a plain message and you get the untouched native Pi experience, on the builder's session. Run a slash command and the builder child **forks the host session**, inheriting your raw chats and every prior panel. Chat and commands are the same agent; nothing about vanilla Pi changes.
-
-The ARCHITECT deliberately stays a separate persistent brain (pinned per project **and per model** in `/tmp/fusion-harness-sessions/`). Two independent perspectives is the point of fusion: an architect that inherited the builder's every assumption would just be an echo. Swapping `--architect` or `--builder` mints a separate brain for the new model — a transcript built under one model is never replayed as another model's own history (replaying sonnet-built turns into fable-5 trips Anthropic's usage-policy classifier; see below).
-
----
-
-## The auto-validation loop
-
-<p align="center">
-  <img src="images/svg-05-gate-first-loop-animated.svg" alt="Validator designs gate.py, baseline runs red, builder builds, gate runs — PASS exits, FAIL loops back, halt at cap" width="780">
-</p>
-
-Red to green, with the gate designed before the build:
-
-1. **VALIDATOR designs the gate first.** It inspects the project read-only and writes a single Astral `uv` Python script (PEP 723) that exits 0 iff *what you asked for is what got built*. Every explicit requirement maps to a concrete check.
-2. **Baseline run must fail RED.** A passing baseline means the gate is weak or the work is already done; either way you hear about it loudly.
-3. **BUILDER builds** with full tools. The gate is visible but immutable.
-4. **The gate runs.** FAIL lines (`expected X, found Y, at PATH`) feed back verbatim into the builder's session as correction instructions. PASS ends the loop.
-5. **Escalation.** From the `--escalate-to-validator-count`-th failure (default 3), the VALIDATOR re-enters as a triage diagnostician; its brief travels with the next correction.
-6. **Gate repair.** If triage diagnoses a `GATE DEFECT` — the gate itself is unsatisfiable or checks something never asked for — the VALIDATOR rewrites its own gate (once per run, via the same single-path `write` it authored it with). The old gate is preserved as `gate.py.r<N>`, the repair renders as its own loud panel, and the repaired gate re-runs **immediately without consuming a builder round** — if the build was right all along, the loop ends green right there. The repair contract forbids weakening any legitimate check.
-7. **Halt.** After `--max-validations` failures (default 5), development stops with the last gate output rendered loudly. No silent infinite loops.
-
-The builder never grades its own homework, and the grader never touches the code — even the gate repair only ever writes the one path the harness dictates.
-
----
-
-## Two columns, everywhere
-
-<p align="center">
-  <img src="images/svg-06-two-column-dx.svg" alt="Architect column and builder column streaming side by side, full-width fusion row, aligned two-cell footer" width="750">
-</p>
-
-Output clarity is the product. The harness mirrors the vanilla Pi experience (tool lines, streaming text, footer) but splits it into two columns it completely controls: ARCHITECT-family left, BUILDER right, aligned across the live widget, the final panels, and the footer.
-
-- Hard role + model labels with one consistent color per role: ARCHITECT ◆, BUILDER ▲, FUSION ⧉, VALIDATOR ✓.
-- While children run, a live widget streams each agent's tool calls and text in its own column; the fusion stage renders as a full-width row.
-- Final panels render full-height into scrollback, so results scroll like normal messages: no hidden lines behind a toggle.
-- The footer is replaced with one aligned cell per model: `◆ ARCHITECT | model (med) | [██--------] 12%` (thinking level + context-window bar).
-- Child output is buffered per agent, never interleaved, and failures name the exact role, model, and error.
-
-Every default prompt lives next to the extension as `SYSTEM_PROMPT_*.md` / `USER_PROMPT_*.md` with `{{VARIABLE}}` interpolation. Tune the harness by editing files, not code.
-
----
-
-## Build your own patterns
-
-<p align="center">
-  <img src="images/video-frames/fusion-patterns-gallery.png" alt="Shipped in this video: /opinion, /fusion, /auto-validate. Your turn: /debate, /parallel, /coordinate — your harness, your patterns" width="780">
-</p>
-
-The three shipped commands are a starting lineup, not the roster. The same spawn-and-render machinery supports any coordination pattern you can prompt: `/debate` (N rounds, two sides, one verdict), `/parallel` (same task, both models, no merge), `/coordinate` (agents plan together, then split the work). This is harness engineering: your tools directly limit what you believe is possible, and a harness you own is a harness you can extend the same afternoon you think of the idea.
-
----
-
-## One node in your software factory
-
-<p align="center">
-  <img src="images/video-frames/harness-to-factory-zoom.png" alt="Zoom out: the fusion harness is one shipped node of an AI Developer Workflow inside a larger software factory" width="780">
-</p>
-
-Zoom out and the whole harness (two agents, three commands, gate loop and all) is a single agent node inside an AI Developer Workflow. Engineers, code, and agents are the three units of value creation; the fusion harness is how one agent slot in that pipeline stops being a lone model and becomes a validated team. Scale your compute to scale your impact.
-
----
-
-## Folder structure
-
-The extension directory holds ONLY what the harness loads at runtime — the code and the
-prompts it reads. Docs live outside it.
-
+```bash
+just fh
 ```
-fusion-harness/
-├── README.md                        # this file — the whole harness, docs included
-├── LICENSE                          # MIT
-├── justfile                         # task runner — just <recipe>
-├── .env                             # API keys (never commit this)
-│
-├── extensions/
-│   └── fusion-harness/              # runtime only
-│       ├── fusion-harness.ts        # the whole harness — 3 commands, widget, footer, renderer
-│       ├── SYSTEM_PROMPT_*.md       # validator + triage contracts
-│       └── USER_PROMPT_*.md         # every default prompt, {{VAR}} interpolated
-│
-├── live_final_generation/           # artifacts from the on-camera SOTA run (fused bench, gate rounds, manifest)
-│
-├── images/                          # README visuals
-│   ├── svg-*.svg                    # hand-built diagrams (2 animated, 4 still)
-│   └── video-frames/                # stills + clean remakes of the video's motion graphics
-└── .claude/
-    └── commands/
-        └── prime.md                 # /prime — orient an agent in this repo
+
+Explicit model stack:
+
+```bash
+just fh-stack .pi/fusion-harness/model-stack-trio.yaml
 ```
+
+The extension selects the configured primary builder as Pi's live host model. Invalid/unavailable stacks fail startup.
+
+## Model stack configuration
+
+`--fh-config <path>` accepts an explicit YAML list with 2–5 slots:
+
+```yaml
+- name: fable
+  model: anthropic/claude-fable-5
+  thinking: xhigh
+  architect: true
+  color: "#A78BFA"
+
+- name: sol
+  model: openai/gpt-5.6-sol
+  thinking: xhigh
+  primary: true
+  color: "#F59E0B"
+
+- name: terra
+  model: openai/gpt-5.6-terra
+  thinking: medium
+  color: "#22D3EE"
+```
+
+Rules:
+
+- 2–5 slots.
+- Exactly one `architect: true`.
+- Exactly one **non-architect** `primary: true`; `primary` is only for the Main builder.
+- Unique 1–16 character names (`A-Za-z0-9_-`).
+- Fully qualified `provider/id` models with configured authentication and visibility in clean-room children launched with `--no-extensions`. Models registered only by another extension are rejected.
+- Thinking: `off|minimal|low|medium|high|xhigh|max` (short aliases accepted).
+- Colors are actual quoted `#RRGGBB` values. Omitted colors use a stable per-stack hash.
+- `system_prompt` may be inline or a path relative to the YAML file (full override of pi's default).
+- `append_system_prompt` takes one entry or a list — each inline text or a YAML-relative file path — appended in order AFTER the slot's base prompt (the `system_prompt` override, or pi's own default when unset; harness contract prompts come before user appends). Children receive them via pi's repeatable `--append-system-prompt`, so the default prompt is never rebuilt. `/fh-system-prompt` shows the effective result.
+- `--fh-config` cannot be mixed with legacy architect/builder model, thinking, or system-prompt flags.
+
+No config auto-discovery occurs; `--fh-config` is explicit.
+
+## Commands
+
+| Command | Behavior |
+|---|---|
+| `/fh [on\|off]` | Command index plus opt-in one-row-per-slot model bar (a `belowEditor` widget). The harness removes Pi's default footer at startup and runs footerless until the bar is toggled on. |
+| `/fh-opinion <prompt>` | Every configured model answers independently with strict read-only tools. |
+| `/fh-fusion "<prompt>" "<instruction>"` | Every slot researches read-only; one fresh temporary FUSION agent is the sole CWD writer; then the complete fused result is synchronized to every model with exact ACK evidence. |
+| `/fh-debate [--rounds N] <prompt>` | N-way read-only debate. Each round every surviving agent receives every other agent's clearly labeled prior opinion, may pick/change sides, and closes without a judge. |
+| `/fh-collaborate <prompt>` | Every agent plans read-only, the architect merges the plans into one validated delegation DAG, then tasks execute the moment their dependencies clear — parallel where the DAG allows, sequential paths where it doesn't, exactly one shared-CWD writer at a time — closed by a final architect integration turn. Proposals, the task breakdown, and every task report render as panels; a live task board runs below the editor. |
+| `/fh-only [slot] [prompt]` | Address one slot directly. Without a prompt it arms the next plain input as a one-send route; selecting the armed slot again disarms it. |
+| `/fh-model` | Three-step picker: slot → model → thinking. Session-only; never rewrites YAML. Main applies both `pi.setModel()` and `pi.setThinkingLevel()` to raw chat. |
+| `/fh-auto-validate <prompt>` | Existing gate-first ARCHITECT + Main build loop. |
+| `/fh-system-prompt` | Responsive grid of every slot's effective system prompt. |
+| `/fh-reset` | Full reset: fresh host session and fresh slot sessions — equivalent to `/new` plus a slot wipe. |
+
+<p align="center">
+  <img src="images/svg-07-opinion-grid-animated.svg" alt="/fh-opinion — every configured model answers read-only, rendered side by side" width="750">
+</p>
+
+## Single-writer invariant
+
+<p align="center">
+  <img src="images/svg-11-collaborate-dag-writer-animated.svg" alt="The writer token hops task to task — reads overlap, exactly one write-enabled child at a time" width="750">
+</p>
+
+Agents must never overwrite each other's work.
+
+- `/fh-opinion` and `/fh-debate`: all agents are read-only (`read,grep,find,ls`).
+- `/fh-fusion`: all source workers are read-only. Their answers are captured under the run's `/tmp/fusion-harness-*` directory. Only the temporary FUSION agent gets full tools and may modify the CWD.
+- `/fh-collaborate`: planning and delegation are tool-enforced read-only; the harness persists the architect's plan JSON. Execution is dependency-driven — read tasks overlap freely, but every write-enabled task waits for the single global writer token, so `maxConcurrentWriteEnabledChildren` is always 1. Worktree commands are observed and fail the run.
+- `/fh-only` and `/fh-auto-validate` have one active writer by design.
+
+A CWD-scoped atomic writer lease prevents separate harness processes from mutating the same checkout simultaneously. Child agents run in their own process groups so Escape, timeout, or session shutdown reaches Pi plus tool/bash descendants. Tool allowlists enforce planning safety; prompt contracts also prohibit detached background jobs.
+
+## N-way debate
+
+<p align="center">
+  <img src="images/svg-08-debate-rounds-animated.svg" alt="/fh-debate — opening, all-to-all rebuttal, and closing rounds across three colored slots" width="750">
+</p>
+
+Round 1 captures independent, falsifiable opening opinions. Before each later round, every agent receives a block for every other agent:
+
+```text
+## [SLOT_NAME] provider/model — CONCRETE OPINION
+<complete prior-round opinion>
+```
+
+Agents are explicitly allowed to defend a side, join another side, synthesize compatible positions, form coalitions, or remain a minority—provided they identify what evidence moved them. Failed agents are labeled and removed from later rounds; the debate continues while at least two opinions survive. All closing opinions render in the responsive AgentGrid. There is no judge or hidden merge.
+
+<p align="center">
+  <img src="images/svg-09-debate-converge-animated.svg" alt="Positions may converge, form coalitions, or hold as a minority — the user judges" width="750">
+</p>
+
+---
+
+## Collaboration: plan, delegate, execute in parallel
+
+<p align="center">
+  <img src="images/svg-10-collaborate-phases-animated.svg" alt="/fh-collaborate — parallel proposals, architect delegation DAG, dependency-ordered execution, final coordination" width="750">
+</p>
+
+
+`/fh-collaborate` has no fixed choreography. Every agent plans the work independently (read-only, in parallel), the ARCHITECT merges those proposals into one validated delegation DAG, and the executor runs on dependency readiness: a task starts the moment its dependencies finish. Independent tasks overlap, dependent tasks form sequential paths, and a slot may own several tasks (they run one at a time on its session).
+
+Everything renders as it happens: proposals as an opinion-style grid panel, the plan as a task table with parallelism levels, every finished task as its own report panel, plus a live task board below the editor (`● writing / ◌ queued / ○ blocked / ✓ done`). The run closes with one final architect integration turn.
+
+
+## Fusion context synchronization
+
+<p align="center">
+  <img src="images/svg-13-fusion-pipeline-animated.svg" alt="/fh-fusion pipeline — fan out, propose, one-writer merge, sync, exact ACKs" width="750">
+</p>
+
+After the sole-writer FUSION agent finishes:
+
+1. The exact result is saved to `fused.md` and `fusion-context.md`.
+2. The fused panel enters the Main host context. Results above the panel limit are split into one visible head plus complete hidden continuation messages, so raw Main retains every byte.
+3. Every slot receives the complete result in a no-tools turn.
+4. Each must reply exactly `ACK FUSION <run-id>`; malformed ACKs retry once.
+5. `acks/<slot>.md` and `summary.json` record status plus the common SHA-256 hash.
+6. The fused result remains visible if ACKs fail, but the run is marked context-sync incomplete.
+
+---
+
+## Gate-first auto-validation
+
+<p align="center">
+  <img src="images/svg-05-gate-first-loop-animated.svg" alt="/fh-auto-validate — the VALIDATOR writes the acceptance gate before the builder does any work" width="750">
+</p>
+
+
+`/fh-auto-validate` inverts the usual order: the VALIDATOR writes a `uv` acceptance gate to disk BEFORE any building happens, a baseline run proves the gate starts red, then Main builds until the gate passes (default cap 5 validations). Failures feed back verbatim; from the third failure the validator adds a read-only triage brief, with a one-shot gate repair if the gate itself is the defect.
+
+
+## Sessions and UI
+
+- Sessions are keyed by slot plus a hash of the complete `provider/model` and live under a per-process run dir, so concurrent harness launches and model swaps can never share or replay each other's transcripts.
+- Main forks the host session; architect and secondary builders keep one session per slot for the LIFETIME OF THE APP RUN — context carries across commands within a launch, and quitting pi discards every slot brain (a restart never resumes old transcripts). `/fh-reset` and `/new` reset mid-run.
+- `/fh-model` non-Main model switches mint/resume the correct model-specific session. Main deliberately follows native Pi switching and preserves the existing host transcript across model changes.
+- The responsive AgentGrid renders 1–5 columns when each can remain at least 34 cells wide; otherwise agents stack vertically.
+- Pi's default footer is removed at TUI startup; the session runs footerless. The opt-in model bar renders one full-width row per slot in its configured hex color when you want status back — each row shows speed, cost, and context together: `◆ ARCHITECT | fable | model (med) | [██--------] 12% | 87 tps | $0.0123`.
+- TPS is observed provider-response throughput (output tokens ÷ provider-response seconds; child startup/network/thinking included, tool execution excluded) and is throughput-weighted per slot across the session, folding the in-flight run live. The host's own raw-chat turns are measured at the `before_provider_request → message_end` boundary and credited to the Main row. Live widget columns and final panel stat lines carry the same `N tps` readout per agent.
 
 ---
 
 ## Recipes
 
-<p align="center">
-  <img src="images/video-frames/model-slot-rack.png" alt="Fusion harness slot rack: Fable 5 in the ARCHITECT slot, GPT-5.6 Sol in the BUILDER slot, Gemini 3.5 Pro day-one in the OPEN slot — role ≠ model" width="780">
-</p>
-
-Role ≠ model. Models change quarterly; the harness compounds. Two model tiers are wired in the justfile: **WORKHORSE** (`WORKHORSE_ARCHITECT`/`WORKHORSE_BUILDER`, use for all testing) and **STATE-OF-THE-ART** (`SOTA_ARCHITECT`/`SOTA_BUILDER`, the on-camera pair). The day a new frontier model drops, it slots into either role with one flag.
-
-| Tier | Architect | Builder | Recipe |
-|---|---|---|---|
-| **WORKHORSE** | `anthropic/claude-sonnet-5` | `openai/gpt-5.6-terra` | `just fh-workhorse` |
-| **STATE-OF-THE-ART** | `anthropic/claude-fable-5` | `openai/gpt-5.6-sol` | `just fh-sota` |
-
-Two ways to run it — everything else is a flag.
-
-```
-just fh-workhorse       # WORKHORSE tier (use this for testing)
-just fh-sota            # STATE-OF-THE-ART tier (fable plans · sol builds + hosts)
+```bash
+just                  # list every recipe
+just fh-stack <yaml>  # any explicit 2-5 slot stack
+just fusion           # rune (Fable 5 architect) + flux (Gemini Flash Main) + drift (DeepSeek V4 Pro)
+just fusion5          # fusion trio + fire (Kimi K3) + hawk (DeepSeek V4 Flash)
+just fh-workhorse     # legacy two-slot pair (cheap)
+just fh-sota          # legacy two-slot pair (frontier)
 ```
 
-All flags append to either recipe, e.g. `just fh-workhorse --architect-thinking high --builder-system-prompt ./persona.md`, or `just fh-sota --architect-thinking max --builder-thinking max` to push both roles to max thinking.
+Stack YAMLs live in `.pi/fusion-harness/` (and `~/.pi/fusion-harness/` for launching from anywhere). A clean demo workspace with the same recipes, scraped DuckDB v2.0 docs in `ai_docs/`, and self-contained demo prompts lives at [`../fusion-harness-v2-playground`](../fusion-harness-v2-playground).
 
-<p align="center">
-  <img src="images/video-frames/sota-max-artifact-pipeline.png" alt="A full SOTA-tier run: spec → /opinion perspectives → /fusion fused plan → /auto-validate guard iterations → shipped, 6/6 artifacts" width="780">
-</p>
 
-That is what a full SOTA run produces end to end: spec in, two perspectives, one fused plan, gated iterations, shipped MVP with evidence. The artifacts from the on-camera run (the fused SQLite benchmark, every gate round, the manifest) live in [`live_final_generation/`](live_final_generation/).
+## Runtime files
 
----
 
-## Flags
+```text
+extensions/fusion-harness/
+├── fusion-harness.ts          # the extension factory: flags, stack, sessions, widgets, small commands
+├── modules/
+│   ├── runtime.ts             # shared types, glyphs, tool allowlists, formatting, HarnessDeps seam
+│   ├── child-runner.ts        # clean-room pi children, JSON streaming, kill-tree escalation
+│   ├── prompt-library.ts      # every model contract, built from prompts/*.md templates
+│   ├── tui.ts                 # TwoCol/AgentGrid/FullWidth, labels, live columns, panel renderer
+│   ├── cmd-readonly.ts        # /fh-opinion + /fh-debate
+│   ├── cmd-fusion.ts          # /fh-fusion
+│   ├── cmd-build.ts           # /fh-collaborate + /fh-auto-validate (writer-lease holders)
+│   ├── model-stack.ts         # YAML parsing, validation, colors, legacy synthesis
+│   ├── agent-layout.ts        # responsive 1-5 agent layout math
+│   ├── collaboration-graph.ts # DAG validation, cycle detection, dependency levels
+│   └── writer-lease.ts        # atomic canonical-CWD writer exclusion
+├── prompts/                   # SYSTEM_PROMPT_*.md / USER_PROMPT_*.md — edit files, not code
+└── tests/                     # parser, graph, and orchestration-invariant tests
+```
 
-| Flag | Default | Meaning |
-|---|---|---|
-| `--architect <provider/id>` | `anthropic/claude-fable-5` | plans / fuses / validates |
-| `--builder <provider/id>` | `openai/gpt-5.6-sol` | builds |
-| `--architect-thinking <level>` | `medium` | thinking for EVERY architect-family execution (worker/fusion/validator/triage) — `off\|minimal\|low\|medium\|high\|xhigh\|max` |
-| `--builder-thinking <level>` | `medium` | thinking for EVERY builder execution — same levels |
-| `--architect-system-prompt <text\|path>` | pi default | system prompt for architect worker/fusion agents (VALIDATOR/TRIAGE keep their `SYSTEM_PROMPT_*.md` contracts) |
-| `--builder-system-prompt <text\|path>` | pi default | system prompt for all builder agents |
-| `--max-validations <n>` | `5` | `/auto-validate`: gate validations before halting (also inline per command) |
-| `--escalate-to-validator-count <n>` | `3` | `/auto-validate`: on the Nth failure, VALIDATOR triages the builder's work (also inline) |
-| `--child-timeout <seconds>` | `28800` (8h) | timeout for EVERY spawned child (the auto-validate builder never drops below the 8h floor; clamp 10–86400) |
+- `fusion-harness.ts` — the extension factory: flags/config, stack resolution, host selection, persistent slot sessions, widgets/model bar, panel plumbing, and the small in-place commands (`/fh`, `/fh-model`, `/fh-only`, `/fh-system-prompt`, `/fh-reset`).
+- `modules/runtime.ts` — shared types (AgentRun, AgentStat, FhDetails), role glyphs/colors, tool allowlists, formatting helpers, and the `HarnessDeps` seam the command modules run through.
+- `modules/child-runner.ts` — clean-room `pi --mode json -p` child processes with JSON-event streaming and close-aware SIGTERM→SIGKILL process-tree escalation.
+- `modules/prompt-library.ts` — every model contract, built from `prompts/SYSTEM_PROMPT_*.md` / `prompts/USER_PROMPT_*.md` templates, plus strict-output parsing.
+- `modules/tui.ts` — TwoCol/AgentGrid/FullWidth layout primitives, labels, live streaming columns, and the transcript panel renderer.
+- `modules/cmd-readonly.ts` — `/fh-opinion` and `/fh-debate`.
+- `modules/cmd-fusion.ts` — `/fh-fusion`.
+- `modules/cmd-build.ts` — `/fh-collaborate` and `/fh-auto-validate` (the writer-lease holders).
+- `modules/model-stack.ts` — real YAML parsing, validation, colors, and legacy synthesis.
+- `modules/agent-layout.ts` — responsive 1–5 agent layout calculations.
+- `modules/collaboration-graph.ts` — DAG validation, cycle detection, and dependency levels.
+- `modules/writer-lease.ts` — atomic canonical-CWD writer exclusion.
+- `tests/` — parser, graph, and orchestration-invariant tests.
 
-`/fusion` takes its two arguments quoted — `/fusion "prompt" "fusion instruction"` — or separated: `/fusion prompt :: fusion instruction`. With no fusion instruction, the built-in critical merge is used.
+Every run writes an inspectable `/tmp/fusion-harness-*` directory with `stack.json`, prompt, per-slot artifacts, summaries, and protocol-specific evidence.
 
----
+## Validation
 
-## Prompts live in files
+```bash
+npm run test:fusion-harness     # deterministic unit/contract tests
+```
 
-Every default prompt sits next to the extension with `{{VARIABLE}}` interpolation — tune the harness by editing files, not code.
-
-| File | Used by |
-|---|---|
-| `SYSTEM_PROMPT_VALIDATOR.md` | gate design (auto-validate step 1) |
-| `SYSTEM_PROMPT_TRIAGE.md` | escalation diagnosis |
-| `USER_PROMPT_FUSION_WORKER.md` | /fusion ARCHITECT + BUILDER workers |
-| `USER_PROMPT_FUSION_MERGE.md` | /fusion FUSION agent (the envelope: both answers + output contract) |
-| `USER_PROMPT_FUSION_DEFAULT_INSTRUCTION.md` | fills the merge envelope's `{{FUSION_INSTRUCTION}}` when you don't pass one |
-| `USER_PROMPT_OPINION.md` | /opinion both agents |
-| `USER_PROMPT_BUILDER.md` · `USER_PROMPT_CORRECTION.md` | auto-validate build + correction rounds |
-| `USER_PROMPT_VALIDATOR.md` · `USER_PROMPT_TRIAGE.md` | gate design + triage requests |
-
-## Artifacts
-
-Every run makes `/tmp/fusion-harness-XXXXXX/` with `prompt.md`, one `<role>.md` per agent, `fused.md` / `gate.py` + `gate-output.txt` as applicable, `summary.json`, and each child's throwaway session dir. Nothing is ever written into the repo.
-
-Downstream agents are grounded in this dir instead of hunting the filesystem: the FUSION agent's prompt names the run dir and both raw answer files (`architect.md` / `builder.md` — complete even when the inline handoff was truncated), and the VALIDATOR/TRIAGE prompts name the run dir with its per-round builder reports and gate outputs.
-
----
-
-## Where it can still fail
-
-<p align="center">
-  <img src="images/video-frames/blind-spot-coverage-matrix.png" alt="Blind-spot coverage matrix: Fable 5 covers 4/6 concerns, GPT-5.6 Sol 3/6, the fusion harness 5/6 — more coverage ≠ perfect" width="780">
-</p>
-
-Two models cover more blind spots than one, and the matrix is honest about the rest: fusion raises coverage, it does not reach perfection, and a shared unknown stays unknown. The concrete failure modes:
-
-- **`uv` missing or a gate timeout**: gate execution errors halt `/auto-validate` immediately with an attributed error; they never burn correction rounds. Install `uv` before relying on gates.
-- **A weak gate**: if the baseline run passes before any work happens, the harness warns loudly and proceeds with suspicion. Treat a first-round pass as a gate defect until proven otherwise.
-- **`.env` vs exported shell vars**: `just`'s dotenv-load does NOT override variables already exported in your shell. A stale exported key silently wins over the repo `.env`.
-- **Parallel writers share one cwd**: `/fusion`'s two workers run concurrently with full tools, so their prompt requires an identity-in-filename (`-ARCHITECT-<model>`) on everything they create. Two agents told to write the same bare path would race and clobber each other — if you ask for one exactly-named file, let the FUSION merge produce it. (`/opinion` children stay read-only/bash-only: it's an A/B read, not a build.)
-- **Stale role memories**: the ARCHITECT session persists per project + model across restarts. If it starts reasoning from an old context, `/fh-reset` gives both roles a clean brain.
-- **Anthropic usage-policy blocks on fable-5**: Fable ships stricter safety classifiers, and a long accumulated agent transcript can false-positive — observed when a sonnet-built session (turns saying "you are claude-sonnet-5" + script execution) was replayed into fable-5: every request blocked at the API, even `/opinion hello`, while the same prompt on a fresh session passed. The per-model session keying prevents the cross-model case; if a block ever recurs on a long same-model session, `/fh-reset` (or `/new`) clears it.
-- **Headless hosts can't fork**: with `--no-session` (headless runs), builder children fall back to a manifest-pinned persistent session instead of forking the host.
+Live validation prompts are checked in under `prompts/duckdb/`, ordered simple to complex and centered on the DuckDB v2.0 preview.
 
 ---
 
@@ -322,7 +289,7 @@ MIT — see [`LICENSE`](LICENSE).
 
 Prepare for the future of software engineering.
 
-Learn tactical agentic coding patterns with [Tactical Agentic Coding](https://agenticengineer.com/tactical-agentic-coding?y=fuhar).
+Learn tactical agentic coding patterns with [Tactical Agentic Coding](https://agenticengineer.com/tactical-agentic-coding?y=fusion2).
 
 Follow the [IndyDevDan YouTube channel](https://www.youtube.com/@indydevdan) to improve your agentic coding advantage.
 
