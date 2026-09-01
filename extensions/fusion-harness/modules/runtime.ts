@@ -141,6 +141,7 @@ export interface FhDetails {
 		| "triage"
 		| "error"
 		| "system-prompt"
+		| "stack" // current session model stack for native ACP clients
 		| "solo" // /fh-only — one selected agent, one full-width answer
 		| "closing" // /fh-debate — the final round: two closing statements, side by side
 		| "collab"; // /fh-collaborate — the shared deliverable after the last turn
@@ -152,7 +153,8 @@ export interface FhDetails {
 	escalateAt?: number; // auto-validate: the --escalate-to-validator-count threshold
 	prompt?: string;
 	fusionPrompt?: string;
-	roles?: Array<{ role: Role; model: string; slotId?: string; slotName?: string; color?: HexColor; primary?: boolean; architect?: boolean }>;
+	roles?: Array<{ role: Role; model: string; slotId?: string; slotName?: string; color?: HexColor; primary?: boolean; architect?: boolean; thinking?: string }>;
+	models?: string[]; // clean-room child catalogue for native model-stack browsers
 	agent?: AgentStat; // fused: the fuser · validation: the validator
 	sources?: AgentStat[]; // the two columns' stats (left, right)
 	answers?: Array<{ role: Role; model: string; text: string; slotId?: string; slotName?: string; color?: HexColor; primary?: boolean }>; // agent bodies in display order

@@ -1059,57 +1059,96 @@ export default function (pi: ExtensionAPI) {
 	// ── 2.11 /fh-model — choose slot → model → thinking, session-only ──
 	pi.registerCommand("fh-model", {
 		description: "Choose a configured slot, model, and thinking level. Session-only; never rewrites YAML.",
-		handler: async (_args, ctx) => {
+		handler: async (args, ctx) => {
 			noteHost(ctx);
 			const stack = modelStack();
-			const choices = orderedSlots(stack).map((slot) => `${slot.architect ? "◆ ARCHITECT" : "▲ BUILDER"} | ${slot.name} | ${slot.model} (${THINKING_SHORT[slot.thinking]})`);
-			const picked = await ctx.ui.select("Fusion Harness — choose slot", choices);
-			if (!picked) return;
-			const slotIndex = choices.indexOf(picked);
-			const selectedSlot = orderedSlots(stack)[slotIndex];
-			if (!selectedSlot) return;
+			const childCatalogue = await childVisibleModels();
+			const emitStack = (current: ModelStack) => panel({
+				kind: "stack",
+				command: "fh-model",
+				ok: true,
+				models: [...childCatalogue].sort(),
+				roles: orderedSlots(current).map((slot) => ({
+					role: (slot.architect ? "ARCHITECT" : "BUILDER") as Role,
+					model: slot.model,
+					slotId: slot.id,
+					slotName: slot.name,
+					color: slot.color,
+					primary: slot.primary,
+					architect: slot.architect,
+					thinking: slot.thinking,
+				})),
+			}, "");
+			const raw = args.trim();
+			if (raw.toLowerCase() === "status") {
+				emitStack(stack);
+				return;
+			}
 
 			const availableModels = ctx.modelRegistry.getAvailable();
-			const configuredModels = [...new Set([selectedSlot.model, ...orderedSlots(stack).map((slot) => slot.model)])];
+			const applyModel = async (slotId: string, selectedModel: string, thinkingRaw: string): Promise<boolean> => {
+				const selectedThinking = resolveStackThinking(thinkingRaw);
+				const selectedSlot = orderedSlots(stack).find((slot) => slot.id === slotId);
+				const slash = selectedModel.indexOf("/");
+				const resolvedModel = slash > 0 ? ctx.modelRegistry.find(selectedModel.slice(0, slash), selectedModel.slice(slash + 1)) : undefined;
+				if (!selectedSlot || !selectedThinking || !resolvedModel || !ctx.modelRegistry.hasConfiguredAuth(resolvedModel) || !childCatalogue.has(selectedModel)) {
+					ctx.ui.notify(`fusion-harness: ${selectedModel} is not available to clean-room Harness agents`, "error");
+					return false;
+				}
+				const next = cloneStack(stack);
+				const target = next.slots.find((slot) => slot.id === selectedSlot.id)!;
+				target.model = selectedModel;
+				target.thinking = selectedThinking;
+				if (target.primary) {
+					if (!(await pi.setModel(resolvedModel))) {
+						ctx.ui.notify(`fusion-harness: could not switch Main host model to ${selectedModel}`, "error");
+						return false;
+					}
+					hostModel = selectedModel;
+					pi.setThinkingLevel(selectedThinking);
+					target.thinking = pi.getThinkingLevel() as Thinking;
+				}
+				next.architect = next.slots.find((slot) => slot.architect)!;
+				next.primaryBuilder = next.slots.find((slot) => slot.primary)!;
+				next.builders = next.slots.filter((slot) => !slot.architect);
+				configuredStack = next;
+				renderFooterWidget();
+				emitStack(next);
+				ctx.ui.notify(`fusion-harness: ${target.name} → ${target.model} (${target.thinking}); session-only, YAML unchanged`, "info");
+				return true;
+			};
+
+			// Native ACP clients use the direct form after showing their own model browser.
+			const direct = raw.match(/^set\s+(\S+)\s+(\S+)\s+(\S+)$/i);
+			if (direct) {
+				await applyModel(direct[1], direct[2], direct[3]);
+				return;
+			}
+
+			emitStack(stack);
+			const choices = orderedSlots(stack).map((slot) => `${slot.architect ? "◆ ARCHITECT" : slot.primary ? "● MAIN" : "▲ BUILDER"} | ${slot.name} | ${slot.model} (${THINKING_SHORT[slot.thinking]})`);
+			const picked = await ctx.ui.select("Fusion Harness — choose slot", choices);
+			if (!picked) return;
+			const selectedSlot = orderedSlots(stack)[choices.indexOf(picked)];
+			if (!selectedSlot) return;
+			const configuredModels = [...new Set([selectedSlot.model, ...orderedSlots(stack).map((slot) => slot.model)])]
+				.filter((model) => childCatalogue.has(model));
 			const browse = "Browse another provider…";
 			const modelChoice = await ctx.ui.select(`Model for ${selectedSlot.name}`, [...configuredModels, browse]);
 			if (!modelChoice) return;
 			let selectedModel = modelChoice;
 			if (modelChoice === browse) {
-				const providers = [...new Set(availableModels.map((model: any) => model.provider as string))].sort();
+				const providers = [...new Set(availableModels.filter((model: any) => childCatalogue.has(`${model.provider}/${model.id}`)).map((model: any) => model.provider as string))].sort();
 				const provider = await ctx.ui.select("Choose model provider", providers);
 				if (!provider) return;
-				const providerModels = availableModels.filter((model: any) => model.provider === provider).map((model: any) => `${model.provider}/${model.id}`).sort();
+				const providerModels = availableModels.filter((model: any) => model.provider === provider && childCatalogue.has(`${model.provider}/${model.id}`)).map((model: any) => `${model.provider}/${model.id}`).sort();
 				const providerModel = await ctx.ui.select(`Model from ${provider}`, providerModels);
 				if (!providerModel) return;
 				selectedModel = providerModel;
 			}
-			const selectedThinkingRaw = await ctx.ui.select(`Thinking for ${selectedSlot.name}`, THINKING_LEVELS);
-			if (!selectedThinkingRaw) return;
-			const selectedThinking = resolveStackThinking(selectedThinkingRaw);
+			const selectedThinking = await ctx.ui.select(`Thinking for ${selectedSlot.name}`, THINKING_LEVELS);
 			if (!selectedThinking) return;
-
-			const next = cloneStack(stack);
-			const target = next.slots.find((slot) => slot.id === selectedSlot.id)!;
-			target.model = selectedModel;
-			target.thinking = selectedThinking;
-			if (target.primary) {
-				const slash = selectedModel.indexOf("/");
-				const model = ctx.modelRegistry.find(selectedModel.slice(0, slash), selectedModel.slice(slash + 1));
-				if (!model || !ctx.modelRegistry.hasConfiguredAuth(model) || !(await pi.setModel(model))) {
-					ctx.ui.notify(`fusion-harness: could not switch Main host model to ${selectedModel}`, "error");
-					return;
-				}
-				hostModel = selectedModel;
-				pi.setThinkingLevel(selectedThinking);
-				target.thinking = pi.getThinkingLevel() as Thinking;
-			}
-			next.architect = next.slots.find((slot) => slot.architect)!;
-			next.primaryBuilder = next.slots.find((slot) => slot.primary)!;
-			next.builders = next.slots.filter((slot) => !slot.architect);
-			configuredStack = next;
-			renderFooterWidget();
-			ctx.ui.notify(`fusion-harness: ${target.name} → ${target.model} (${target.thinking}); session-only, YAML unchanged`, "info");
+			await applyModel(selectedSlot.id, selectedModel, selectedThinking);
 		},
 	});
 
