@@ -400,6 +400,7 @@ export interface HarnessDeps {
 	// stack + host
 	noteHost(ctx: any): void;
 	modelStack(): ModelStack;
+	childVisibleModels(): Promise<Set<string>>;
 	architectModel(): string;
 	builderModel(): string;
 	// spawn identities + persistent sessions

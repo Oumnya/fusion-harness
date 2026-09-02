@@ -1,11 +1,13 @@
 /**
- * fusion-harness — FUSE 2-5 frontier models instead of racing them. AND, not OR.
+ * fusion-harness — combine frontier models instead of racing them. AND, not OR.
  *
  * Model stack: exactly one ARCHITECT, exactly one primary/Main BUILDER (the live
  * raw-chat host), and up to three secondary builders. Explicit YAML via --fh-config;
- * legacy two-slot flags remain compatible.
+ * legacy two-slot flags remain compatible. Native /fh-ask requests can choose 2-20
+ * models without changing that configured stack.
  *
  * Commands:
+ *   /fh-ask          native variable-model request transport     (modules/cmd-ask.ts)
  *   /fh-opinion      N independent read-only opinions            (modules/cmd-readonly.ts)
  *   /fh-synthesize   N read-only analyses → one merged decision  (modules/cmd-readonly.ts)
  *   /fh-debate       N-way all-to-all debate, no judge           (modules/cmd-readonly.ts)
@@ -46,6 +48,7 @@ import * as path from "node:path"; // every artifact/session path
 import { performance } from "node:perf_hooks"; // host-turn TPS boundaries
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Container, Text, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { registerAskCommand } from "./modules/cmd-ask.ts";
 import { registerAutoValidateCommand, registerCollaborateCommand } from "./modules/cmd-build.ts";
 import { registerFusionCommand } from "./modules/cmd-fusion.ts";
 import { registerReadonlyCommands } from "./modules/cmd-readonly.ts";
@@ -1065,11 +1068,16 @@ export default function (pi: ExtensionAPI) {
 			noteHost(ctx);
 			const stack = modelStack();
 			const childCatalogue = await childVisibleModels();
+			const availableModels = ctx.modelRegistry.getAvailable();
+			const nativeModels = availableModels
+				.filter((model: any) => ctx.modelRegistry.hasConfiguredAuth(model) && childCatalogue.has(`${model.provider}/${model.id}`))
+				.map((model: any) => `${model.provider}/${model.id}`)
+				.sort();
 			const emitStack = (current: ModelStack) => panel({
 				kind: "stack",
 				command: "fh-model",
 				ok: true,
-				models: [...childCatalogue].sort(),
+				models: nativeModels,
 				roles: orderedSlots(current).map((slot) => ({
 					role: (slot.architect ? "ARCHITECT" : "BUILDER") as Role,
 					model: slot.model,
@@ -1087,7 +1095,6 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
-			const availableModels = ctx.modelRegistry.getAvailable();
 			const applyModel = async (slotId: string, selectedModel: string, thinkingRaw: string): Promise<boolean> => {
 				const selectedThinking = resolveStackThinking(thinkingRaw);
 				const selectedSlot = orderedSlots(stack).find((slot) => slot.id === slotId);
@@ -1305,6 +1312,7 @@ export default function (pi: ExtensionAPI) {
 		startGridWidget,
 		noteHost,
 		modelStack,
+		childVisibleModels,
 		architectModel,
 		builderModel,
 		newSlotRun,
@@ -1324,6 +1332,7 @@ export default function (pi: ExtensionAPI) {
 		ensureSummary,
 		totals,
 	};
+	registerAskCommand(pi, deps); // /fh-ask native variable-model requests
 	registerReadonlyCommands(pi, deps); // /fh-opinion + /fh-synthesize + /fh-debate
 	registerFusionCommand(pi, deps); // /fh-fusion
 	registerCollaborateCommand(pi, deps); // /fh-collaborate
