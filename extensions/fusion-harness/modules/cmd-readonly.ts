@@ -13,8 +13,8 @@ import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { runChild } from "./child-runner.ts";
 import { orderedSlots } from "./model-stack.ts";
-import { debateClosingPrompt, debateOpeningPrompt, debateRebuttalPrompt, opinionPrompt } from "./prompt-library.ts";
-import { clampCount, CUSTOM_TYPE, READONLY_TOOLS, runError, runOk, toStat, type AgentRun, type HarnessDeps } from "./runtime.ts";
+import { contractSystemPrompt, debateClosingPrompt, debateOpeningPrompt, debateRebuttalPrompt, opinionPrompt, synthesisPrompt, workerPrompt } from "./prompt-library.ts";
+import { clampCount, CUSTOM_TYPE, newRun, READONLY_TOOLS, runError, runOk, toStat, type AgentRun, type HarnessDeps, type Role } from "./runtime.ts";
 
 const ROUNDS_DEFAULT = 3;
 
@@ -69,6 +69,73 @@ export function registerReadonlyCommands(pi: ExtensionAPI, h: HarnessDeps): void
 				await h.save(artifactsDir, "summary.json", JSON.stringify({ command: "fh-opinion", ok, agents: runs.map(toStat), sessions: Object.fromEntries(slots.map((slot) => [slot.id, runs.find((run) => run.slot?.id === slot.id)?.sessionRef ?? h.cachedSlotId(slot)])), ...h.totals(runs, startedAt) }, null, 2));
 			} finally {
 				await h.ensureSummary(artifactsDir, { command: "fh-opinion", ok: false, stopped: stopper.stopped(), agents: runs.map(toStat), sessions: Object.fromEntries(slots.map((slot) => [slot.id, runs.find((run) => run.slot?.id === slot.id)?.sessionRef ?? h.cachedSlotId(slot)])), ...h.totals(runs, startedAt) });
+				stopper.release();
+				stopWidget();
+				ctx.ui.setStatus(CUSTOM_TYPE, undefined);
+			}
+		},
+	});
+
+	// ── /fh-synthesize — N read-only sources → one read-only synthesis ──
+	pi.registerCommand("fh-synthesize", {
+		description: "All configured agents analyze read-only; one neutral synthesizer returns a decision-ready merged answer without changing files.",
+		handler: async (raw, ctx) => {
+			h.noteHost(ctx);
+			const prompt = (raw ?? "").trim();
+			if (!prompt) {
+				ctx.ui.notify("Usage: /fh-synthesize <prompt>", "warning");
+				return;
+			}
+			const stack = h.modelStack();
+			const slots = orderedSlots(stack);
+			const runs = slots.map(h.newSlotRun);
+			const synthesis = newRun("FUSION", stack.architect.model);
+			const startedAt = Date.now();
+			const artifactsDir = await h.mkArtifacts();
+			await h.save(artifactsDir, "prompt.md", prompt);
+			await h.save(artifactsDir, "stack.json", JSON.stringify(stack, null, 2));
+			await fs.promises.mkdir(path.join(artifactsDir, "agents"), { recursive: true });
+			h.panel({ kind: "prompt", command: "fh-synthesize", ok: true }, `/fh-synthesize ${prompt}`);
+			h.panel({ kind: "banner", command: "fh-synthesize", ok: true, prompt,
+				roles: [...slots.map((slot) => ({ role: (slot.architect ? "ARCHITECT" : "BUILDER") as Role, model: slot.model, slotId: slot.id, slotName: slot.name, color: slot.color, primary: slot.primary, architect: slot.architect })), { role: "FUSION" as Role, model: stack.architect.model }], artifactsDir }, "");
+			const stopper = h.startStoppable(ctx, "fh-synthesize");
+			const stopWidget = h.startGridWidget(ctx, "fh-synthesize", runs, synthesis, startedAt);
+			ctx.ui.setStatus(CUSTOM_TYPE, `synthesis: ${runs.length} agents analyzing read-only…`);
+			try {
+				await Promise.all(runs.map(async (run) => {
+					const slot = run.slot!;
+					const agentDir = path.join(artifactsDir, "agents", slot.id);
+					await fs.promises.mkdir(agentDir, { recursive: true });
+					await runChild({ run, prompt: workerPrompt(slot, stack, prompt), systemPrompt: slot.systemPrompt, appendSystemPrompts: slot.appendSystemPrompts, tools: READONLY_TOOLS, thinking: slot.thinking, ...h.slotInitialSpawn(slot, ctx, agentDir), cwd: ctx.cwd, timeoutMs: h.childTimeoutMs(), signal: stopper.signal });
+					await h.save(agentDir, "answer.md", runOk(run) ? run.text : `FAILED: ${runError(run)}`);
+				}));
+				if (stopper.stopped()) {
+					h.stoppedPanel("fh-synthesize", runs, artifactsDir, startedAt, "Analysis stopped; completed source reports remain on disk.");
+					return;
+				}
+				const sourceManifest = runs.map((run) => ({ slot: run.slot!.id, name: run.slot!.name, model: run.model, status: run.status, ok: runOk(run), artifact: path.join(artifactsDir, "agents", run.slot!.id, "answer.md"), error: runOk(run) ? undefined : runError(run) }));
+				await h.save(artifactsDir, "source-manifest.json", JSON.stringify(sourceManifest, null, 2));
+				h.panel({ kind: "multi", command: "fh-synthesize", title: "READ-ONLY SOURCE ANALYSES", ok: runs.every(runOk), prompt, sources: runs.map(toStat), answers: runs.map((run) => ({ role: run.role, model: run.model, text: runOk(run) ? run.text : `FAILED: ${runError(run)}`, slotId: run.slot!.id, slotName: run.slot!.name, color: run.slot!.color, primary: run.slot!.primary })), artifactsDir, ...h.totals(runs, startedAt) }, runs.map((run) => `## ${run.slot!.name}\n${runOk(run) ? run.text : `FAILED: ${runError(run)}`}`).join("\n\n"));
+				const successful = runs.filter(runOk);
+				if (successful.length < 2) {
+					h.panel({ kind: "error", command: "fh-synthesize", ok: false, sources: runs.map(toStat), artifactsDir, ...h.totals(runs, startedAt) }, `Synthesis did not run: at least 2 successful sources are required; found ${successful.length}.`);
+					return;
+				}
+				ctx.ui.setStatus(CUSTOM_TYPE, "synthesis: merging evidence into one read-only result…");
+				await runChild({ run: synthesis, prompt: synthesisPrompt(prompt, runs, synthesis.model, stack.architect.thinking, artifactsDir), systemPrompt: contractSystemPrompt(stack.architect.systemPrompt, "SYSTEM_PROMPT_SYNTHESIS.md"), appendSystemPrompts: stack.architect.appendSystemPrompts, tools: READONLY_TOOLS, thinking: stack.architect.thinking, sessionDir: path.join(artifactsDir, "synthesis"), cwd: ctx.cwd, timeoutMs: h.childTimeoutMs(), signal: stopper.signal });
+				if (stopper.stopped()) {
+					h.stoppedPanel("fh-synthesize", [...runs, synthesis], artifactsDir, startedAt, "The synthesis was stopped; source reports remain on disk.");
+					return;
+				}
+				await h.save(artifactsDir, "synthesized.md", runOk(synthesis) ? synthesis.text : `FAILED: ${runError(synthesis)}`);
+				if (!runOk(synthesis)) {
+					h.panel({ kind: "error", command: "fh-synthesize", ok: false, agent: toStat(synthesis), sources: runs.map(toStat), artifactsDir, ...h.totals([...runs, synthesis], startedAt) }, `Sources completed, but synthesis failed: ${runError(synthesis)}`);
+					return;
+				}
+				h.panel({ kind: "synthesized", command: "fh-synthesize", ok: true, prompt, agent: toStat(synthesis), sources: runs.map(toStat), artifactsDir, ...h.totals([...runs, synthesis], startedAt) }, synthesis.text);
+				await h.save(artifactsDir, "summary.json", JSON.stringify({ command: "fh-synthesize", ok: true, agents: [...runs, synthesis].map(toStat), ...h.totals([...runs, synthesis], startedAt) }, null, 2));
+			} finally {
+				await h.ensureSummary(artifactsDir, { command: "fh-synthesize", ok: false, stopped: stopper.stopped(), agents: [...runs, synthesis].map(toStat), ...h.totals([...runs, synthesis], startedAt) });
 				stopper.release();
 				stopWidget();
 				ctx.ui.setStatus(CUSTOM_TYPE, undefined);

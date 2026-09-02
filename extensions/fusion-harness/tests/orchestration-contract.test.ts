@@ -25,7 +25,7 @@ describe("orchestration contracts", () => {
   });
 
   test("registers target commands and deletes unsafe/obsolete commands", () => {
-    for (const command of ["fh", "fh-model", "fh-only", "fh-opinion", "fh-fusion", "fh-debate", "fh-collaborate", "fh-auto-validate", "fh-system-prompt", "fh-reset"]) {
+    for (const command of ["fh", "fh-model", "fh-only", "fh-opinion", "fh-synthesize", "fh-fusion", "fh-debate", "fh-collaborate", "fh-auto-validate", "fh-system-prompt", "fh-reset"]) {
       expect(source).toContain(`registerCommand("${command}"`);
     }
     expect(source).not.toContain('registerCommand("fh-both"');
@@ -43,6 +43,14 @@ describe("orchestration contracts", () => {
     expect(source).toContain("ACK FUSION ${runId}");
     expect(prompt("USER_PROMPT_FUSION_WORKER.md")).toContain("ONLY agent allowed to modify");
     expect(prompt("USER_PROMPT_FUSION_MERGE.md")).toContain("ONLY process permitted to modify");
+  });
+
+  test("read-only synthesis merges independent evidence without a writer", () => {
+    expect(source).toContain('registerCommand("fh-synthesize"');
+    expect(source).toContain('SYSTEM_PROMPT_SYNTHESIS.md');
+    expect(source).toContain('kind: "synthesized"');
+    expect(prompt("SYSTEM_PROMPT_SYNTHESIS.md")).toContain("strictly read-only");
+    expect(prompt("USER_PROMPT_SYNTHESIS_MERGE.md")).toContain("Consensus & divergence");
   });
 
   test("N-way debate receives all other concrete opinions", () => {

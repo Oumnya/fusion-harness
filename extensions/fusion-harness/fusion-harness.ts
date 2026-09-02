@@ -7,6 +7,7 @@
  *
  * Commands:
  *   /fh-opinion      N independent read-only opinions            (modules/cmd-readonly.ts)
+ *   /fh-synthesize   N read-only analyses → one merged decision  (modules/cmd-readonly.ts)
  *   /fh-debate       N-way all-to-all debate, no judge           (modules/cmd-readonly.ts)
  *   /fh-fusion       N sources → sole-writer FUSION → ACKs       (modules/cmd-fusion.ts)
  *   /fh-collaborate  plans → architect DAG → readiness execution (modules/cmd-build.ts)
@@ -1023,6 +1024,7 @@ export default function (pi: ExtensionAPI) {
 	// Descriptions stay 3-8 words so index lines NEVER wrap in a normal terminal.
 	const COMMAND_INDEX: Array<[string, string]> = [
 		["/fh-opinion <prompt>", "every agent answers read-only"],
+		["/fh-synthesize <prompt>", "read-only analysis, one merged recommendation"],
 		['/fh-fusion "<prompt>" "<fusion>"', "parallel research, one writer, all ACK"],
 		["/fh-debate [--rounds N] <prompt>", "all-to-all debate, no judge"],
 		["/fh-collaborate <prompt>", "agents plan, architect delegates, parallel build"],
@@ -1322,7 +1324,7 @@ export default function (pi: ExtensionAPI) {
 		ensureSummary,
 		totals,
 	};
-	registerReadonlyCommands(pi, deps); // /fh-opinion + /fh-debate
+	registerReadonlyCommands(pi, deps); // /fh-opinion + /fh-synthesize + /fh-debate
 	registerFusionCommand(pi, deps); // /fh-fusion
 	registerCollaborateCommand(pi, deps); // /fh-collaborate
 	registerAutoValidateCommand(pi, deps); // /fh-auto-validate

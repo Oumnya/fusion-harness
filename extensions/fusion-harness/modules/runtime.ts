@@ -135,6 +135,7 @@ export interface FhDetails {
 		| "sync"
 		| "stopped"
 		| "fused"
+		| "synthesized"
 		| "opinion"
 		| "gate"
 		| "validation"

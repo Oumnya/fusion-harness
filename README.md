@@ -124,6 +124,7 @@ No config auto-discovery occurs; `--fh-config` is explicit.
 |---|---|
 | `/fh [on\|off]` | Command index plus opt-in one-row-per-slot model bar (a `belowEditor` widget). The harness removes Pi's default footer at startup and runs footerless until the bar is toggled on. |
 | `/fh-opinion <prompt>` | Every configured model answers independently with strict read-only tools. |
+| `/fh-synthesize <prompt>` | Every configured model analyzes with strict read-only tools; one fresh read-only synthesizer critically merges their evidence into a decision-ready answer without changing files. |
 | `/fh-fusion "<prompt>" "<instruction>"` | Every slot researches read-only; one fresh temporary FUSION agent is the sole CWD writer; then the complete fused result is synchronized to every model with exact ACK evidence. |
 | `/fh-debate [--rounds N] <prompt>` | N-way read-only debate. Each round every surviving agent receives every other agent's clearly labeled prior opinion, may pick/change sides, and closes without a judge. |
 | `/fh-collaborate <prompt>` | Every agent plans read-only, the architect merges the plans into one validated delegation DAG, then tasks execute the moment their dependencies clear — parallel where the DAG allows, sequential paths where it doesn't, exactly one shared-CWD writer at a time — closed by a final architect integration turn. Proposals, the task breakdown, and every task report render as panels; a live task board runs below the editor. |
@@ -145,7 +146,7 @@ No config auto-discovery occurs; `--fh-config` is explicit.
 
 Agents must never overwrite each other's work.
 
-- `/fh-opinion` and `/fh-debate`: all agents are read-only (`read,grep,find,ls`).
+- `/fh-opinion`, `/fh-synthesize`, and `/fh-debate`: all agents are read-only (`read,grep,find,ls`). `/fh-synthesize` also keeps its final merger read-only.
 - `/fh-fusion`: all source workers are read-only. Their answers are captured under the run's `/tmp/fusion-harness-*` directory. Only the temporary FUSION agent gets full tools and may modify the CWD.
 - `/fh-collaborate`: planning and delegation are tool-enforced read-only; the harness persists the architect's plan JSON. Execution is dependency-driven — read tasks overlap freely, but every write-enabled task waits for the single global writer token, so `maxConcurrentWriteEnabledChildren` is always 1. Worktree commands are observed and fail the run.
 - `/fh-only` and `/fh-auto-validate` have one active writer by design.

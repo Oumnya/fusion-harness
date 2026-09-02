@@ -119,6 +119,31 @@ export function fuserPrompt(
 	});
 }
 
+export function synthesisPrompt(
+	prompt: string,
+	sources: AgentRun[],
+	model: string,
+	thinking: string,
+	artifactsDir: string,
+): string {
+	const successful = sources.filter(runOk);
+	const perSource = Math.max(2_000, Math.floor(HANDOFF_MAX / Math.max(1, successful.length)));
+	const manifest = sources.map((run) => {
+		const slot = run.slot!;
+		return [
+			`## [${slot.name.toUpperCase()}] ${slot.model}`,
+			`status: ${run.status}${runOk(run) ? "" : ` (${runError(run)})`}`,
+			`artifact: ${path.join(artifactsDir, "agents", slot.id, "answer.md")}`,
+			runOk(run) ? `excerpt:\n${truncateChars(run.text, perSource)}` : "excerpt: unavailable",
+		].join("\n");
+	}).join("\n\n");
+	return fill("USER_PROMPT_SYNTHESIS_MERGE.md", {
+		MODEL: shortModel(model), THINKING: thinking, PROMPT: prompt,
+		SOURCE_COUNT: String(sources.length), ARTIFACTS_DIR: artifactsDir,
+		MANIFEST_PATH: path.join(artifactsDir, "source-manifest.json"), SOURCE_MANIFEST: manifest,
+	});
+}
+
 export function fusionContextAckPrompt(runId: string, fusedResult: string): { prompt: string; hash: string } {
 	const hash = createHash("sha256").update(fusedResult).digest("hex");
 	return { prompt: fill("USER_PROMPT_FUSION_CONTEXT_ACK.md", { RUN_ID: runId, FUSED_HASH: hash, FUSED_RESULT: fusedResult }), hash };
